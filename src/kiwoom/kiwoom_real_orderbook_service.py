@@ -1,6 +1,6 @@
 import time
 
-from src.thread_service import ThreadService
+from src.util.thread_service import ThreadService
 
 
 class KiwoomRealOrderbookService(ThreadService):

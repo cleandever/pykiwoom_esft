@@ -1,6 +1,6 @@
 import time
 
-from src.thread_service import ThreadService
+from src.util.thread_service import ThreadService
 
 
 class KiwoomChejanService(ThreadService):
@@ -17,4 +17,4 @@ class KiwoomChejanService(ThreadService):
             data = self.kiwoom_wrapper.km.get_chejan_no_blocking()
             if data:
                 self.callback_chejan(self.kiwoom_wrapper, data)
-            time.sleep(0.1)
+            time.sleep(0.05)
