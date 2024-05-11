@@ -266,6 +266,9 @@ class Kiwoom:
         else:
             return data
 
+    def IsConnected(self, *args):
+        return self.connected
+
     def SendOrder(self, rqname, screen, accno, order_type, code, quantity, price, hoga, order_no):
         """
         주식 주문을 서버로 전송하는 메서드

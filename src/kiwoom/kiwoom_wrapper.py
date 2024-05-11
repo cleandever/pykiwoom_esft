@@ -1,3 +1,5 @@
+import time
+
 from src.kiwoom.orderbook import order_book_fid
 from src.pykiwoom.manager import KiwoomManager
 from src.util.logger import Logger
@@ -27,9 +29,20 @@ class KiwoomWrapper:
         self.real_screen_no = '0300'
 
     def login(self):
+        # 객체 생성하면서 동시에 백그라운드로 로그인인 발생함
         Logger.write('키움 로그인 시도')
         self.km = KiwoomManager()
+        self.wait_until_login_completed()
         Logger.write('키움 로그인 완료')
+
+    def wait_until_login_completed(self):
+        while not self.is_connected():
+            time.sleep(1)
+
+    def is_connected(self):
+        self.km.put_method(("IsConnected", ''))
+        connected = self.km.get_method()
+        return connected
 
     # 예상체결등락률상위
     def get_expected_transaction_rate_top(self):
