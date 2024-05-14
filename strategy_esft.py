@@ -16,7 +16,7 @@ total_chejan_quantity = 0
 
 
 def init_log():
-    Logger.log_filename = Helper.get_init_log_filename(log_dir='../log/')
+    Logger.log_filename = Helper.get_init_log_filename(log_dir='./log/')
     Logger.write('')
 
 
@@ -39,7 +39,7 @@ def refresh_top_1_until_0902(expected_trans_rate_top):
     while Helper.is_now_time_under('090155'):
         expected_trans_rate_top.query()
         top_1 = expected_trans_rate_top.pick_top_1_to_buy()
-        time.sleep(2)
+        time.sleep(3)
     return top_1
 
 

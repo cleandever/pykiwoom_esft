@@ -20,7 +20,11 @@ class Chejan:
 
     def is_chejan(self):
         order_status_fid = chejan_fid['주문상태']
-        if order_status_fid in self.chejan_raw and self.chejan_raw[order_status_fid] == '체결':
+        chejan_quantity_fid = chejan_fid['체결량']
+
+        if order_status_fid in self.chejan_raw and \
+                self.chejan_raw[order_status_fid] == '체결' and \
+                self.chejan_raw[chejan_quantity_fid].strip():
             return True
         return False
 

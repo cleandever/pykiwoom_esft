@@ -1,9 +1,8 @@
 import unittest
 from unittest.mock import patch
 
-from src.config_esft import ConfigEsft
 from src.kiwoom.kiwoom_wrapper import KiwoomWrapper
-from src.strategy_esft import main
+from strategy_esft import main
 from src.util.helper import Helper
 
 

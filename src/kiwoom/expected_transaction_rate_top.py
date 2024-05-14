@@ -27,8 +27,7 @@ class ExpectedTransactionRateTop:
             buy_quantity = int(row['매수잔량'])
             buy_amount = expected_price * buy_quantity
             expected_trading_amount = expected_price * expected_trading_quantity
-            split_n = max(expected_trading_amount // 100_000_000, 1)
-            split_n = min(split_n, 9)
+            split_n = self.get_split_n(buy_amount)
 
             if rate < 29.5 or sell_quantity > 0:
                 continue
@@ -64,3 +63,11 @@ class ExpectedTransactionRateTop:
                  'price': top_1_expected_price,
                  'split_n': top_1_split_n}
         return top_1
+
+    def get_split_n(self, buy_amount):
+        buy_amount_billion = buy_amount // 100_000_000
+        split_n = int(-0.0015 * buy_amount_billion + 10.442)
+        split_n = min(split_n, 9)
+        split_n = max(split_n, 1)
+        return split_n
+
