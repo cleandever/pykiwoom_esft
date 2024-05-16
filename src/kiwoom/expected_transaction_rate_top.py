@@ -29,7 +29,12 @@ class ExpectedTransactionRateTop:
             expected_trading_amount = expected_price * expected_trading_quantity
             split_n = self.get_split_n(buy_amount)
 
-            if rate < 29.5 or sell_quantity > 0:
+            # 등락률 폭
+            if not (29.5 <= rate <= 30):
+                continue
+
+            # 매도잔량은 무조건 0임
+            if sell_quantity > 0:
                 continue
 
             if buy_amount > top_1_buy_amount:
@@ -66,8 +71,10 @@ class ExpectedTransactionRateTop:
 
     def get_split_n(self, buy_amount):
         buy_amount_billion = buy_amount // 100_000_000
-        split_n = int(-0.0015 * buy_amount_billion + 10.442)
+
+        # 3000억원 이하는 9방 매수 기준 추세선
+        split_n = int(-0.002 * buy_amount_billion + 15)
+
         split_n = min(split_n, 9)
         split_n = max(split_n, 1)
         return split_n
-

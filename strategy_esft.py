@@ -21,6 +21,7 @@ def init_log():
 
 
 def wait_until_market_open():
+    Logger.write('장 시작 대기 (~08:40')
     while Helper.is_now_time_under('084000'):
         time.sleep(2)
 

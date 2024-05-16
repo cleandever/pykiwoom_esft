@@ -1,35 +1,32 @@
 import unittest
 
-from src.kiwoom.orderbook import Orderbook
-from tests.unittest.kiwoom_test import KiwoomTest
+from src.kiwoom.orderbook import Orderbook, order_book_fid
 
 
-class TestOrderbook(KiwoomTest):
-    def setUp(self):
-        self.stock_code = '005930'
-        self.order_book = Orderbook(self.kiwoom_wrapper, self.stock_code)
+def create_dummy_order_book_raw():
+    order_book_raw = dict()
+    #order_book_raw['등락률'] = '+29.8'
+    order_book_raw[order_book_fid['매도호가1']] = '0'
+    order_book_raw[order_book_fid['매도호가수량1']] = '0'
+    order_book_raw[order_book_fid['매수호가1']] = '50000'
+    order_book_raw[order_book_fid['매수호가수량1']] = '10000000'
+    return order_book_raw
 
-    def test_query(self):
-        self.order_book.query()
-        self.assertTrue(len(self.order_book.order_book_raw) > 0)
 
-    def test_is_ceiling_locked_safely(self):
-        self.order_book.query()
-        self.assertFalse(self.order_book.is_ceiling_locked_safely())
+class TestOrderbook(unittest.TestCase):
+    def test_is_ceiling_locked_safely_on_true(self):
+        stock_code = '005930'
+        order_book_raw = create_dummy_order_book_raw()
+        # 상한가 잠겨있는 수량
+        order_book_raw[order_book_fid['매수호가수량1']] = '10000000'
 
-        # 데이터 임의 조작 (상한가 잠김 조건)
-        order_book_raw = self.order_book.order_book_raw
-        order_book_raw['등락률'] = '+29.8'
-        order_book_raw['매도1호가잔량'] = '0'
-        order_book_raw['매수1호가'] = '50000'
-        order_book_raw['매수1호가잔량'] = '10000000'
-        self.assertTrue(self.order_book.is_ceiling_locked_safely())
-
-    @unittest.skip('현재 상한가에 잠긴 경우만 테스트 수행')
-    def test_real_stock(self):
-        # 현재 상한가에 잠긴 종목을 테스트 수행
-        stock_code = '309960'
-        order_book = Orderbook(self.kiwoom_wrapper, stock_code)
-        order_book.query()
+        order_book = Orderbook(stock_code, order_book_raw)
         self.assertTrue(order_book.is_ceiling_locked_safely())
 
+    def test_is_ceiling_locked_safely_on_false(self):
+        stock_code = '005930'
+        order_book_raw = create_dummy_order_book_raw()
+        # 상한가 풀려있는 수량
+        order_book_raw[order_book_fid['매수호가수량1']] = '10000'
+        order_book = Orderbook(stock_code, order_book_raw)
+        self.assertFalse(order_book.is_ceiling_locked_safely())
