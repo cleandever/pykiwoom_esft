@@ -4,12 +4,17 @@ import time
 
 
 from py_singleton import singleton
+from src.util.log_telegram import LogTelegram
 
 
 @singleton
 class Logger:
     log = None
-    log_filename = '../../temp.log'
+    log_filename = 'temp.log'
+
+    # telegram
+    telegram_enabled = True
+    log_telegram = None
 
     def __init__(self):
         Logger.log = Logger._init_logger()
@@ -63,3 +68,16 @@ class Logger:
         logger.addHandler(file_handler)
 
         return logger
+
+    @classmethod
+    def init_telegram(cls, chat_id, token, enabled=True):
+        Logger.telegram_enabled = enabled
+        Logger.log_telegram = LogTelegram(chat_id, token)
+        Logger.log_telegram.start_service()
+
+    @classmethod
+    def write_to_bot(cls, msg):
+        if not Logger.telegram_enabled:
+            return
+
+        Logger.log_telegram.write(msg)

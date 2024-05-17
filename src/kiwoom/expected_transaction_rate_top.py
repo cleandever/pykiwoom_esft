@@ -75,6 +75,12 @@ class ExpectedTransactionRateTop:
         # 3000억원 이하는 9방 매수 기준 추세선
         split_n = int(-0.002 * buy_amount_billion + 15)
 
+        if buy_amount_billion > ConfigEsft.buy_condition_buy_amount1_threshold:
+            # 증거금율이 100%가 아니면 분할 매수 횟수 1회 추가
+            # caching된 데이터에서 계속 조회하게 되므로 API 조회 부하
+            if self.kiwoom_wrapper.get_margin_rate() != 100:
+                split_n += 1
+
         split_n = min(split_n, 9)
         split_n = max(split_n, 1)
         return split_n

@@ -2,6 +2,7 @@ import time
 
 from src.kiwoom.chejan import Chejan
 from src.kiwoom.kiwoom_chejan_service import KiwoomChejanService
+from src.kiwoom.kiwoom_real_market_open_time_service import KiwoomRealMarketOpenTimeService
 from src.kiwoom.kiwoom_real_orderbook_service import KiwoomRealOrderbookService
 from src.kiwoom.orderbook import Orderbook
 from src.util.helper import Helper
@@ -18,6 +19,15 @@ class TestKiwoomWrapper(KiwoomTest):
         if Helper.is_time_between('084000', '152000'):
             self.assertTrue(len(df.index) > 0)
             self.assertTrue(df.iloc[0]['종목코드'])
+
+    def test_get_margin_rate(self):
+        stock_code = '005930'
+        margin_rate = self.kiwoom_wrapper.get_margin_rate(stock_code)
+        self.assertTrue(margin_rate <= 100)
+
+        # from cache
+        margin_rate = self.kiwoom_wrapper.get_margin_rate(stock_code)
+        self.assertTrue(margin_rate <= 100)
 
     def test_get_max_buy_quantity(self):
         stock_code = '005930'
@@ -52,14 +62,20 @@ class TestKiwoomWrapper(KiwoomTest):
         kiwoom_chejan_service.stop_service()
 
     def test_real_orderbook(self):
-        stock_code = '429270'
+        stock_code = '003350'
         order_book_service = KiwoomRealOrderbookService(self.kiwoom_wrapper, stock_code, callback_orderbook)
         order_book_service.start_service()
         time.sleep(3)
         order_book_service.stop_service()
 
+    def test_market_open_time(self):
+        market_open_time_service = KiwoomRealMarketOpenTimeService(self.kiwoom_wrapper, callback_market_open_time)
+        market_open_time_service.start_service()
+        time.sleep(3)
+        market_open_time_service.stop_service()
 
-def callback_chejan(chejan_raw):
+
+def callback_chejan(kiwoom_wrapper, chejan_raw):
     Logger.write(chejan_raw)
 
     chejan = Chejan(chejan_raw)
@@ -68,6 +84,10 @@ def callback_chejan(chejan_raw):
         Logger.write(chejan.to_string())
 
 
-def callback_orderbook(stock_code, order_book_raw):
+def callback_orderbook(kiwoom_wrapper, stock_code, order_book_raw):
     order_book = Orderbook(stock_code, order_book_raw)
     Logger.write(order_book.is_ceiling_locked_safely())
+
+
+def callback_market_open_time(market_open_time_raw):
+    Logger.write(market_open_time_raw)

@@ -1,5 +1,6 @@
 from src.config_esft import ConfigEsft
 from src.kiwoom.expected_transaction_rate_top import ExpectedTransactionRateTop
+from src.util.helper import Helper
 from tests.unittest.kiwoom_test import KiwoomTest
 
 
@@ -8,12 +9,16 @@ class TestExpectedTransactionRateTop(KiwoomTest):
         self.expected_trans_rate_top = ExpectedTransactionRateTop(self.kiwoom_wrapper)
 
     def test_query(self):
+        if not Helper.is_time_between('084000', '153000'):
+            return
         self.expected_trans_rate_top.query()
         self.assertTrue(len(self.expected_trans_rate_top.df) > 0)
 
     def test_pick_top_1_to_buy(self):
-        self.expected_trans_rate_top.query()
+        if not Helper.is_time_between('084000', '153000'):
+            return
 
+        self.expected_trans_rate_top.query()
         df = self.expected_trans_rate_top.df
 
         # 데이터 조작

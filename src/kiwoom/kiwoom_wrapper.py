@@ -1,5 +1,6 @@
 import time
 
+from src.kiwoom.market_open_time import market_open_time_fid
 from src.kiwoom.orderbook import order_book_fid
 from src.pykiwoom.manager import KiwoomManager
 from src.util.logger import Logger
@@ -21,12 +22,16 @@ class HogaType:
 
 
 class KiwoomWrapper:
+    # key - stock_code, value - margin_rate (int)
+    cache_margin_rate = dict()
+
     def __init__(self, acc_no):
         self.km = None
         self.acc_no = acc_no
         self.method_screen_no = '0100'
         self.tr_screen_no = '0200'
         self.real_screen_no = '0300'
+        Logger.write(f'키움 계좌 - acc_no : {self.acc_no}')
 
     def login(self):
         # 객체 생성하면서 동시에 백그라운드로 로그인인 발생함
@@ -36,7 +41,10 @@ class KiwoomWrapper:
         Logger.write('키움 로그인 완료')
 
     def wait_until_login_completed(self):
+        elapsed_seconds = 0
         while not self.is_connected():
+            Logger.write(f'로그인 중{"."*elapsed_seconds}')
+            elapsed_seconds += 1
             time.sleep(1)
 
     def is_connected(self):
@@ -92,7 +100,7 @@ class KiwoomWrapper:
         df, remain = self.km.get_tr()
         return df.iloc[0]
 
-    def get_max_buy_quantity(self, stock_code, price):
+    def __get_margin_rate_raw(self, stock_code, price):
         output = ['적용증거금율']
 
         margin_list = [20, 30, 40, 50, 60, 100]
@@ -115,12 +123,31 @@ class KiwoomWrapper:
         }
         self.km.put_tr(tr_cmd)
         df, remain = self.km.get_tr()
-        row = df.iloc[0]
+        return df.iloc[0]
 
+    def get_margin_rate(self, stock_code):
+        if stock_code in KiwoomWrapper.cache_margin_rate:
+            return KiwoomWrapper.cache_margin_rate[stock_code]
+        else:
+            price = 0
+            row = self.__get_margin_rate_raw(stock_code, price)
+            try:
+                applied_margin_rate = int(row['적용증거금율'].strip('%'))
+            except Exception as e:
+                Logger.write_error(e)
+                # 강제로 100% 설정
+                applied_margin_rate = 100
+
+            KiwoomWrapper.cache_margin_rate[stock_code] = applied_margin_rate
+            return applied_margin_rate
+
+    def get_max_buy_quantity(self, stock_code, price):
+        row = self.__get_margin_rate_raw(stock_code, price)
         applied_margin_rate = row['적용증거금율'].strip('%')
         max_buy_quantity = int(row[f'증거금{applied_margin_rate}주문가능수량'])
         Logger.write(f'증거금 적용 최대주문가능수량 - '
-                     f'종목코드 : {stock_code} : '
+                     f'종목코드 : {stock_code},  '
+                     f'적용증거금율 : {applied_margin_rate}%, '
                      f'최대주문가능수량 : {max_buy_quantity}')
         return max_buy_quantity
 
@@ -132,7 +159,8 @@ class KiwoomWrapper:
         self.km.put_method(("SendOrder", "시장가매수", self.method_screen_no, self.acc_no,
                             OrderType.신규매수, stock_code, quantity, price, HogaType.시장가, order_no))
         ret = self.km.get_method()
-        Logger.write(f'시장가 매수 주문 완료 - 종목코드 : {stock_code}, 수량 : {quantity}, 반환값 : {ret}')
+        Logger.write(f'시장가 매수 주문 완료 - 종목코드 : {stock_code}, '
+                     f'수량 : {quantity}, 반환값 : {ret}', write_to_bot=True)
         return ret
 
     # 시장가 매도 주문
@@ -143,7 +171,8 @@ class KiwoomWrapper:
         self.km.put_method(("SendOrder", "시장가매도", self.method_screen_no, self.acc_no,
                             OrderType.신규매도, stock_code, quantity, price, HogaType.시장가, order_no))
         ret = self.km.get_method()
-        Logger.write(f'시장가 매도 주문 완료 - 종목코드 : {stock_code}, 수량 : {quantity}, 반환값 : {ret}')
+        Logger.write(f'시장가 매도 주문 완료 - 종목코드 : {stock_code}, '
+                     f'수량 : {quantity}, 반환값 : {ret}', write_to_bot=True)
         return ret
 
     # (전체) 매수 주문 취소
@@ -154,7 +183,8 @@ class KiwoomWrapper:
         self.km.put_method(("SendOrder", "매수주문취소", self.method_screen_no, self.acc_no,
                             OrderType.매수취소, stock_code, quantity, price, HogaType.NONE, order_no))
         ret = self.km.get_method()
-        Logger.write(f'매수 주문 취소 완료 - 종목코드 : {stock_code}, 주문번호 : {order_no}, 반환값 : {ret}')
+        Logger.write(f'매수 주문 취소 완료 - 종목코드 : {stock_code}, '
+                     f'주문번호 : {order_no}, 반환값 : {ret}', write_to_bot=True)
 
     def register_real(self, stock_code):
         fid_list = list(order_book_fid.values())
@@ -163,6 +193,18 @@ class KiwoomWrapper:
             'real_type': '주식호가잔량',
             'screen': self.real_screen_no,
             'code_list': [stock_code],
+            'fid_list': fid_list,
+            "opt_type": 0
+        }
+        self.km.put_real(real_cmd)
+
+    def register_real_market_open_time(self):
+        fid_list = list(market_open_time_fid.values())
+        real_cmd = {
+            'func_name': "SetRealReg",
+            'real_type': '장시작시간',
+            'screen': self.real_screen_no,
+            'code_list': '',
             'fid_list': fid_list,
             "opt_type": 0
         }

@@ -17,11 +17,12 @@ total_chejan_quantity = 0
 
 def init_log():
     Logger.log_filename = Helper.get_init_log_filename(log_dir='./log/')
+    Logger.init_telegram(ConfigEsft.telegram_chat_id, ConfigEsft.telegram_token)
     Logger.write('')
 
 
 def wait_until_market_open():
-    Logger.write('장 시작 대기 (~08:40')
+    Logger.write('장 시작 대기 (~08:40)')
     while Helper.is_now_time_under('084000'):
         time.sleep(2)
 
@@ -53,7 +54,7 @@ def buy(kiwoom_wrapper, stock_code, price, split_n):
 
     for _ in range(split_n):
         if quantity_per_order < 100:
-            Logger.write('주문당 주문 수량이 100주 이하인 경우 예외가 발생하므로 프로그램 강제 종료')
+            Logger.write('주문당 주문 수량이 100주 이하인 경우 예외가 발생하므로 프로그램 강제 종료', write_to_bot=True)
             exit(1)
         kiwoom_wrapper.request_market_buy_order(stock_code, quantity_per_order)
         time.sleep(0.3)
@@ -74,7 +75,7 @@ def callback_chejan(kiwoom_wrapper, chejan_raw):
     chejan = Chejan(chejan_raw)
     if chejan.is_chejan():
         chejan.parse_chejan()
-        Logger.write(chejan.to_string())
+        Logger.write(chejan.to_string(), write_to_bot=True)
         if chejan.chejan_quantity == 100:
             total_chejan_quantity += chejan.chejan_quantity
             kiwoom_wrapper.cancel_buy_order(chejan.stock_code, chejan.order_no)
@@ -92,9 +93,18 @@ def main():
     # 매수 대상 종목 확인
     stock_code, price, split_n = top_1['stock_code'], top_1['price'], top_1['split_n']
 
+    # 강제 지정
+    #stock_code = '003230'
+    #price = 446500
+    #split_n = 1
+
     # 매수 대상 종목코드 정보가 없다면 프로그램 종료
     if not stock_code:
         exit(1)
+
+
+    Logger.write(f'매수 대상 선정 완료 - 종목코드 : {stock_code}, '
+                 f'가격 : {price}, 분할 매수 : {split_n}')
 
     # 실시간 호가
     order_book_service = KiwoomRealOrderbookService(kiwoom_wrapper, stock_code, callback_orderbook)
