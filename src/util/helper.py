@@ -1,6 +1,8 @@
 import datetime
 import os
 
+import psutil as psutil
+
 
 class Helper:
     @classmethod
@@ -35,3 +37,9 @@ class Helper:
         if now_time < time:
             return True
         return False
+
+    @classmethod
+    def terminate_current_process(cls):
+        current_system_pid = os.getpid()
+        ThisSystem = psutil.Process(current_system_pid)
+        ThisSystem.terminate()

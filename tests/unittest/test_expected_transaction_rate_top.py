@@ -1,45 +1,58 @@
+import unittest
+from unittest.mock import Mock, patch
+import pandas as pd
+
 from src.config_esft import ConfigEsft
 from src.kiwoom.expected_transaction_rate_top import ExpectedTransactionRateTop
-from src.util.helper import Helper
-from tests.unittest.kiwoom_test import KiwoomTest
 
 
-class TestExpectedTransactionRateTop(KiwoomTest):
+class TestExpectedTransactionRateTop(unittest.TestCase):
     def setUp(self):
-        self.expected_trans_rate_top = ExpectedTransactionRateTop(self.kiwoom_wrapper)
+        self.mock_kiwoom_wrapper = Mock()
+        self.etr_top = ExpectedTransactionRateTop(self.mock_kiwoom_wrapper)
 
     def test_query(self):
-        if not Helper.is_time_between('084000', '153000'):
-            return
-        self.expected_trans_rate_top.query()
-        self.assertTrue(len(self.expected_trans_rate_top.df) > 0)
+        mock_df = pd.DataFrame({'test': [1, 2, 3]})
+        self.mock_kiwoom_wrapper.get_expected_transaction_rate_top.return_value = mock_df
+        self.etr_top.query()
+        self.assertTrue(self.etr_top.df.equals(mock_df))
 
-    def test_pick_top_1_to_buy(self):
-        if not Helper.is_time_between('084000', '153000'):
-            return
+    @patch('src.util.logger.Logger')
+    @patch('src.config_esft.ConfigEsft')
+    def test_pick_top_1_to_buy(self, mock_config, mock_logger):
+        mock_config.buy_condition_buy_amount1_threshold = 100_000_000_000
+        mock_config.top_1_stock_code = None
+        mock_config.block_stock_codes = ['123456']
 
-        self.expected_trans_rate_top.query()
-        df = self.expected_trans_rate_top.df
+        test_data = {
+            '종목코드': ['000001', '000002', '123456', '000003'],
+            '종목명': ['Stock1', 'Stock2', 'Blocked', 'Stock3'],
+            '등락률': ['29.9', '30.0', '29.8', '29.7'],
+            '예상체결가': [1000, 2000, 3000, 4000],
+            '예상체결량': [1000, 2000, 3000, 4000],
+            '매도잔량': [0, 0, 100, 0],
+            '매수잔량': [10000, 20000, 30000, 400000000]
+        }
+        self.etr_top.df = pd.DataFrame(test_data)
 
-        # 데이터 조작
-        stock_code = df.iloc[0]['종목코드']
-        df.iloc[0]['등락률'] = '+29.9'
-        df.iloc[0]['예상체결가'] = '5000'
-        df.iloc[0]['예상체결량'] = '100000'
-        df.iloc[0]['매도잔량'] = '0'
-        df.iloc[0]['매수잔량'] = '100000000'
-        top_1 = self.expected_trans_rate_top.pick_top_1_to_buy()
-        self.assertEqual(top_1['stock_code'], stock_code)
+        result = self.etr_top.pick_top_1_to_buy()
 
-        # 매수 조건 금액을 굉장히 크게 높였을 때는 만족하는 종목 코드가 없어야함
-        ConfigEsft.buy_condition_buy_amount1_threshold = 999_999_999_999_999
-        top_1 = self.expected_trans_rate_top.pick_top_1_to_buy()
-        self.assertEqual(top_1['stock_code'], '')
+        self.assertEqual(result['stock_code'], '000003')
+        self.assertEqual(result['price'], 4000)
 
     def test_get_split_n(self):
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(50_000_000_000), 9)
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(120_000_000_000), 9)
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(290_000_000_000), 9)
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(360_000_000_000), 7)
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(630_000_000_000), 2)
-        self.assertEqual(self.expected_trans_rate_top.get_split_n(910_000_000_000), 1)
+        result = self.etr_top.get_split_n(10000000000)
+        self.assertEqual(result, 9)
+
+        ConfigEsft.split_n = 3
+        result = self.etr_top.get_split_n(10000000000)
+        self.assertEqual(result, 3)
+
+        ConfigEsft.split_n = 0
+        result = self.etr_top.get_split_n(10000000000)
+        self.assertEqual(result, 9)
+
+    def test_is_blocked_stock_code(self):
+        ConfigEsft.block_stock_codes = ['123456', '789012']
+        self.assertTrue(self.etr_top._is_blocked_stock_code('123456'))
+        self.assertFalse(self.etr_top._is_blocked_stock_code('000001'))

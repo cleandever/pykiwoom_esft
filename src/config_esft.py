@@ -1,6 +1,12 @@
 class ConfigEsft:
     acc_no = '5068904411'
 
+    block_stock_codes = []
+
+    top_1_stock_code = ''
+
+    split_n = 0
+
     # 최소 매수 조건 금액
     buy_condition_buy_amount1_threshold = 15_000_000_000
 

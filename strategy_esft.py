@@ -14,6 +14,9 @@ from src.util.logger import Logger
 # 총 체결 수량
 total_chejan_quantity = 0
 
+# 매수한 종목 코드
+bought_stock_code = ''
+
 
 def init_log():
     Logger.log_filename = Helper.get_init_log_filename(log_dir='./log/')
@@ -46,11 +49,19 @@ def refresh_top_1_until_0902(expected_trans_rate_top):
 
 
 def buy(kiwoom_wrapper, stock_code, price, split_n):
+    # 주문한 종목 코드를 저장
+    global bought_stock_code
+    bought_stock_code = stock_code
+
     # 증거금율을 적용한 최대매수가능수량 조회
     max_buy_quantity = kiwoom_wrapper.get_max_buy_quantity(stock_code, price)
 
     # 한 주문당 매수할 수량
     quantity_per_order = max_buy_quantity // split_n
+
+    Logger.write(f'분할 매수 횟수 : {split_n}, '
+                 f'매수 당 수량 : {quantity_per_order}, '
+                 f'매수 당 금액 : {(quantity_per_order*price)//10_000}만원')
 
     for _ in range(split_n):
         if quantity_per_order < 100:
@@ -64,17 +75,24 @@ def callback_orderbook(kiwoom_wrapper, stock_code, order_book_raw):
     order_book = Orderbook(stock_code, order_book_raw)
     if not order_book.is_ceiling_locked_safely():
         kiwoom_wrapper.request_market_sell_order(stock_code, total_chejan_quantity)
-        #TODO: 보유한 주식 재확인 후 전량 매도
+        # TODO: 보유한 주식 재확인 후 전량 매도
         exit(1)
 
 
 def callback_chejan(kiwoom_wrapper, chejan_raw):
     global total_chejan_quantity
+    global bought_stock_code
     Logger.write(chejan_raw)
 
     chejan = Chejan(chejan_raw)
     if chejan.is_chejan():
         chejan.parse_chejan()
+
+        if bought_stock_code != chejan.stock_code:
+            Logger.write(f'쩜상 프로그램에서 매수한 체결 정보가 아니므로 무시 - '
+                         f'종목코드 : {chejan.stock_code}')
+            return
+
         Logger.write(chejan.to_string(), write_to_bot=True)
         if chejan.chejan_quantity == 100:
             total_chejan_quantity += chejan.chejan_quantity
@@ -82,29 +100,32 @@ def callback_chejan(kiwoom_wrapper, chejan_raw):
             time.sleep(0.25)
 
 
+def validate_kiwoom_api_status(kiwoom_wrapper):
+    # 시장가 주문
+    # 주문 취소
+    pass
+
+
 def main():
     init_log()
     wait_until_market_open()
 
     kiwoom_wrapper = create_kiwoom_wrapper_and_login()
+    validate_kiwoom_api_status(kiwoom_wrapper)
+
     expected_trans_rate_top = ExpectedTransactionRateTop(kiwoom_wrapper)
     top_1 = refresh_top_1_until_0902(expected_trans_rate_top)
 
     # 매수 대상 종목 확인
     stock_code, price, split_n = top_1['stock_code'], top_1['price'], top_1['split_n']
 
-    # 강제 지정
-    #stock_code = '003230'
-    #price = 446500
-    #split_n = 1
-
     # 매수 대상 종목코드 정보가 없다면 프로그램 종료
     if not stock_code:
-        exit(1)
-
+        Helper.terminate_current_process()
 
     Logger.write(f'매수 대상 선정 완료 - 종목코드 : {stock_code}, '
-                 f'가격 : {price}, 분할 매수 : {split_n}')
+                 f'가격 : {price}, '
+                 f'분할 매수 : {split_n}')
 
     # 실시간 호가
     order_book_service = KiwoomRealOrderbookService(kiwoom_wrapper, stock_code, callback_orderbook)
