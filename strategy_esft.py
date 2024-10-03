@@ -1,3 +1,5 @@
+import datetime
+import threading
 import time
 
 from src.config_esft import ConfigEsft
@@ -5,11 +7,11 @@ from src.kiwoom.chejan import Chejan
 from src.kiwoom.expected_transaction_rate_top import ExpectedTransactionRateTop
 from src.kiwoom.kiwoom_chejan_service import KiwoomChejanService
 from src.kiwoom.kiwoom_real_orderbook_service import KiwoomRealOrderbookService
+from src.kiwoom.kiwoom_wrapper import KiwoomWrapper
 from src.kiwoom.orderbook import Orderbook
 from src.util.helper import Helper
-from src.kiwoom.kiwoom_wrapper import KiwoomWrapper
 from src.util.logger import Logger
-
+from src.util.telegram_menu_esft import TelegramMenuEsft
 
 # 총 체결 수량
 total_chejan_quantity = 0
@@ -75,8 +77,9 @@ def callback_orderbook(kiwoom_wrapper, stock_code, order_book_raw):
     order_book = Orderbook(stock_code, order_book_raw)
     if not order_book.is_ceiling_locked_safely():
         kiwoom_wrapper.request_market_sell_order(stock_code, total_chejan_quantity)
+        time.sleep(1)
         # TODO: 보유한 주식 재확인 후 전량 매도
-        exit(1)
+        Helper.terminate_current_process()
 
 
 def callback_chejan(kiwoom_wrapper, chejan_raw):
@@ -106,9 +109,31 @@ def validate_kiwoom_api_status(kiwoom_wrapper):
     pass
 
 
+def get_seconds_until_target_time(target_hour=9, target_minute=3):
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+
+    time_diff = int((target_time - now).total_seconds())
+    return time_diff if time_diff > 0 else 0
+
+
+def check_and_terminate_if_no_position():
+    seconds_to_wait = get_seconds_until_target_time(target_hour=9, target_minute=3)
+    time.sleep(seconds_to_wait)
+
+    global bought_stock_code
+    if not bought_stock_code:
+        Logger.write('매수한 종목이 없으므로 프로세스 강제 종료')
+        Helper.terminate_current_process()
+
+
 def main():
     init_log()
+    threading.Thread(target=check_and_terminate_if_no_position).start()
     wait_until_market_open()
+
+    telegram_menu = TelegramMenuEsft()
+    telegram_menu.notify_service_created()
 
     kiwoom_wrapper = create_kiwoom_wrapper_and_login()
     validate_kiwoom_api_status(kiwoom_wrapper)
@@ -118,6 +143,11 @@ def main():
 
     # 매수 대상 종목 확인
     stock_code, price, split_n = top_1['stock_code'], top_1['price'], top_1['split_n']
+
+    # 강제 수동 지정
+    #stock_code = ''
+    #price = 0
+    #split_n = 0
 
     # 매수 대상 종목코드 정보가 없다면 프로그램 종료
     if not stock_code:

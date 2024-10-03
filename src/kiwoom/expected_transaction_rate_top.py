@@ -1,4 +1,5 @@
 from src.config_esft import ConfigEsft
+from src.util.company_wise import CompanyWise
 from src.util.logger import Logger
 
 
@@ -15,6 +16,7 @@ class ExpectedTransactionRateTop:
         top_1_stock_name = ''
         top_1_expected_price = 0
         top_1_buy_amount = 0
+        top_1_buy_quantity_percent_on_floating_stock_count = 0
         top_1_split_n = 1
 
         candidate_stock_info = {}
@@ -32,6 +34,13 @@ class ExpectedTransactionRateTop:
             buy_quantity = int(row['매수잔량'])
             buy_amount = expected_price * buy_quantity
             expected_trading_amount = expected_price * expected_trading_quantity
+            floating_stock_count = CompanyWise.get_floating_stock_count(stock_code)
+
+            # 유동주식수 획득에 실패한 경우 무조건 100% 강제 지정
+            # 100% 강제 지정은 top 1 선택시 해당 조건을 안 보겠다는 의미
+            buy_quantity_percent_on_floating_stock_count = (buy_quantity / floating_stock_count) * 100 \
+                if floating_stock_count > 0 else 100
+
             split_n = self.get_split_n(buy_amount, expected_price)
 
             candidate_stock_info['stock_code'] = {
@@ -53,6 +62,7 @@ class ExpectedTransactionRateTop:
                 top_1_stock_name = stock_name
                 top_1_expected_price = expected_price
                 top_1_buy_amount = buy_amount
+                top_1_buy_quantity_percent_on_floating_stock_count = buy_quantity_percent_on_floating_stock_count
                 top_1_split_n = split_n
 
             Logger.write(f'종목코드 : {stock_code}, '
@@ -61,13 +71,15 @@ class ExpectedTransactionRateTop:
                          f'예상체결가 : {expected_price}, '
                          f'예상체결량 : {expected_trading_quantity}, '
                          f'예상거래대금 : {expected_trading_amount//100_000_000}억, '
+                         f'최우선매수잔량비율 : {buy_quantity_percent_on_floating_stock_count:.1f}%, '
                          f'분할매수 횟수 : {split_n}, '
                          f'매도잔량 : {sell_quantity}, '
                          f'매수잔량 : {buy_quantity}, '
                          f'매수잔량금액 : {buy_amount//100_000_000}억')
 
-        # 최우선매수잔량금액의 최소 금액 조건 확인
-        if top_1_buy_amount < ConfigEsft.buy_condition_buy_amount1_threshold:
+        # 매수하기 위한 최우선매수잔량 최소 조건 확인
+        if (top_1_buy_amount < ConfigEsft.buy_condition_buy_amount1_threshold and
+                top_1_buy_quantity_percent_on_floating_stock_count < ConfigEsft.buy_condition_buy_qty_percent_on_floating_stock_count):
             # clear
             top_1_stock_code = ''
             top_1_stock_name = ''
