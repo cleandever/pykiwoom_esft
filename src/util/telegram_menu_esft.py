@@ -12,7 +12,8 @@ class TelegramMenuEsft(TelegramMenu):
             ('menu', self.menu_callback),
             ('set_top_1_stock_code', self.set_top_1_stock_code_callback),
             ('set_split_n', self.set_split_n_callback),
-            ('block_stock_code', self.block_stock_code_callback)
+            ('block_stock_code', self.block_stock_code_callback),
+            ('set_ceiling_breakaway_amount_billion', self.set_ceiling_breakaway_amount_billion_callback),
         ]
 
     def notify_service_created(self):
@@ -49,3 +50,13 @@ class TelegramMenuEsft(TelegramMenu):
             Logger.write_error(e)
         Logger.write(f'분할 매수 횟수 강제 지정 - {ConfigEsft.split_n}',
                      write_to_bot=True)
+
+    def set_ceiling_breakaway_amount_billion_callback(self, _, callback_context):
+        try:
+            ceiling_breakaway_amount_billion = float(callback_context.args[0])
+            ConfigEsft.ceiling_breakaway_amount = ceiling_breakaway_amount_billion * 100_000_000
+        except Exception as e:
+            Logger.write_error(e)
+        Logger.write(f'상한가 이탈 금액 설정 - {ConfigEsft.ceiling_breakaway_amount/100_000_000:.1f}억',
+                     write_to_bot=True)
+
