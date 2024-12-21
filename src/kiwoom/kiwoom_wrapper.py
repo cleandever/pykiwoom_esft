@@ -1,4 +1,5 @@
 import time
+from functools import lru_cache
 
 from src.kiwoom.market_open_time import market_open_time_fid
 from src.kiwoom.orderbook import order_book_fid
@@ -24,6 +25,7 @@ class HogaType:
 class KiwoomWrapper:
     # key - stock_code, value - margin_rate (int)
     cache_margin_rate = dict()
+
 
     def __init__(self, acc_no):
         self.km = None
@@ -99,6 +101,44 @@ class KiwoomWrapper:
         self.km.put_tr(tr_cmd)
         df, remain = self.km.get_tr()
         return df.iloc[0]
+
+    def __get_stock_basic_info(self, stock_code):
+        tr_cmd = {
+            'rqname': "opt10001",
+            'trcode': 'opt10001',
+            'next': '0',
+            'screen': self.tr_screen_no,
+            'input': {
+                "종목코드": stock_code
+            },
+            'output': ['종목코드', '종목명', '상장주식', '유통주식']
+        }
+        self.km.put_tr(tr_cmd)
+        df, remain = self.km.get_tr()
+        return df.iloc[0]
+
+    @lru_cache(maxsize=128)
+    def get_floating_stock_count(self, stock_code):
+        row = self.__get_stock_basic_info(stock_code)
+        floating_stock_count = 0
+        try:
+            floating_stock_count = int(row['유통주식'])
+        except Exception as e:
+            Logger.write_error(e)
+
+        return floating_stock_count
+
+    @lru_cache(maxsize=128)
+    def get_total_stock_count(self, stock_code):
+        row = self.__get_stock_basic_info(stock_code)
+        total_stock_count = 0
+        try:
+            # 단위가 1000
+            total_stock_count = int(row['상장주식']) * 1000
+        except Exception as e:
+            Logger.write_error(e)
+
+        return total_stock_count
 
     def __get_margin_rate_raw(self, stock_code, price):
         output = ['적용증거금율']

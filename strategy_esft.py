@@ -43,9 +43,12 @@ def refresh_top_1_until_0902(expected_trans_rate_top):
              'price': 0,
              'split_n': 1}
 
-    while Helper.is_now_time_under('090155'):
+    while Helper.is_now_time_under('090210'):
         expected_trans_rate_top.query()
         top_1 = expected_trans_rate_top.pick_top_1_to_buy()
+        # 9시 2분 넘어갔는데 매수할 종목이 있다면 탈출
+        if Helper.is_now_time_over('090200') and top_1:
+            break
         time.sleep(3)
     return top_1
 
@@ -144,10 +147,11 @@ def main():
     # 매수 대상 종목 확인
     stock_code, price, split_n = top_1['stock_code'], top_1['price'], top_1['split_n']
 
-    # 강제 수동 지정
-    #stock_code = ''
-    #price = 0
-    #split_n = 0
+    # 강제 수동 지정 (텔레그램)
+    if ConfigEsft.top_1_stock_code and ConfigEsft.price > 0 and ConfigEsft.split_n > 0:
+        stock_code = ConfigEsft.top_1_stock_code
+        price = ConfigEsft.price
+        split_n = ConfigEsft.split_n
 
     # 매수 대상 종목코드 정보가 없다면 프로그램 종료
     if not stock_code:
