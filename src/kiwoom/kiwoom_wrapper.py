@@ -124,6 +124,7 @@ class KiwoomWrapper:
         try:
             floating_stock_count = int(row['유통주식'])
         except Exception as e:
+            Logger.write(f'유통주식수 조회 실패 - 종목코드 : {stock_code}')
             Logger.write_error(e)
 
         return floating_stock_count
@@ -136,6 +137,7 @@ class KiwoomWrapper:
             # 단위가 1000
             total_stock_count = int(row['상장주식']) * 1000
         except Exception as e:
+            Logger.write(f'상장주식수 조회 실패 - 종목코드 : {stock_code}')
             Logger.write_error(e)
 
         return total_stock_count
