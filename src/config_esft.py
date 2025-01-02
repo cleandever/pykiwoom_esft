@@ -17,6 +17,11 @@ class ConfigEsft:
 
     ceiling_breakaway_amount = 4_900_000_000
 
+    service_start_time = '084001'
+    service_end_time = '153000'
+    buy_trigger_start_time = '090200'
+    buy_trigger_end_time = '090210'
+
     # telegram (stock_esft_kw)
     telegram_chat_id = '5279260139'
     telegram_token = '7190118056:AAGsZ2qxbMCkzaCsWNo1PyQ3940awE_x_kk'

@@ -27,8 +27,8 @@ def init_log():
 
 
 def wait_until_market_open():
-    Logger.write('장 시작 대기 (~08:40)')
-    while Helper.is_now_time_under('084000'):
+    Logger.write(f'장 시작 대기 (~{ConfigEsft.service_start_time})')
+    while Helper.is_now_time_under(ConfigEsft.service_start_time):
         time.sleep(2)
 
 
@@ -43,11 +43,11 @@ def refresh_top_1_until_0902(expected_trans_rate_top):
              'price': 0,
              'split_n': 1}
 
-    while Helper.is_now_time_under('090210'):
+    while Helper.is_now_time_under(ConfigEsft.buy_trigger_end_time):
         expected_trans_rate_top.query()
         top_1 = expected_trans_rate_top.pick_top_1_to_buy()
         # 9시 2분 넘어갔는데 매수할 종목이 있다면 탈출
-        if Helper.is_now_time_over('090200') and top_1:
+        if Helper.is_now_time_over(ConfigEsft.buy_trigger_start_time) and top_1:
             break
         time.sleep(3)
     return top_1
@@ -112,17 +112,9 @@ def validate_kiwoom_api_status(kiwoom_wrapper):
     pass
 
 
-def get_seconds_until_target_time(target_hour=9, target_minute=3):
-    now = datetime.datetime.now()
-    target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-
-    time_diff = int((target_time - now).total_seconds())
-    return time_diff if time_diff > 0 else 0
-
-
 def check_and_terminate_if_no_position():
-    seconds_to_wait = get_seconds_until_target_time(target_hour=9, target_minute=3)
-    time.sleep(seconds_to_wait)
+    while Helper.is_now_time_under(ConfigEsft.buy_trigger_end_time):
+        time.sleep(5)
 
     global bought_stock_code
     if not bought_stock_code:
@@ -172,7 +164,7 @@ def main():
     # 분할 매수
     buy(kiwoom_wrapper, stock_code, price, split_n)
 
-    while Helper.is_now_time_under('153000'):
+    while Helper.is_now_time_under(ConfigEsft.service_end_time):
         time.sleep(1)
 
     order_book_service.stop_service()
