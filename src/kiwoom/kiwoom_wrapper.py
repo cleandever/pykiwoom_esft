@@ -40,7 +40,7 @@ class KiwoomWrapper:
         Logger.write('키움 로그인 시도')
         self.km = KiwoomManager()
         self.wait_until_login_completed()
-        Logger.write('키움 로그인 완료 - acc_no : {self.acc_no}', write_to_bot=True)
+        Logger.write(f'키움 로그인 완료 - acc_no : {self.acc_no}', write_to_bot=True)
 
     def wait_until_login_completed(self):
         elapsed_seconds = 0
