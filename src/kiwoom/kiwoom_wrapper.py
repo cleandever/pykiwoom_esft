@@ -102,6 +102,43 @@ class KiwoomWrapper:
         df, remain = self.km.get_tr()
         return df.iloc[0]
 
+    def get_stock_holding_quantity(self, stock_code):
+        """
+        특정 종목 코드에 대한 현재 보유 수량을 반환
+        :param stock_code: 종목 코드 (str)
+        :return: 보유 수량 (int)
+        """
+        Logger.write(f"보유 수량 조회 요청 - 종목코드 : {stock_code}")
+
+        # opw00018 TR 요청 생성
+        tr_cmd = {
+            'rqname': "opw00018",
+            'trcode': 'opw00018',
+            'next': '0',
+            'screen': self.tr_screen_no,
+            'input': {
+                '계좌번호': self.acc_no,
+                '비밀번호': "",
+                '비밀번호입력매체구분': "00",
+                '조회구분': "1"  # 1:합산, 2:개별
+            },
+            'output': ['종목번호', '보유수량']
+        }
+
+        # TR 요청 전송
+        self.km.put_tr(tr_cmd)
+        df, remain = self.km.get_tr()
+
+        # 종목 코드로 필터링하여 보유 수량 반환
+        try:
+            row = df[df['종목번호'].astype(str).str.contains(stock_code)].iloc[0]
+            quantity = int(row['보유수량'])
+            Logger.write(f"보유 수량 조회 성공 - 종목코드 : {stock_code}, 수량 : {quantity}")
+            return quantity
+        except IndexError:
+            Logger.write(f"보유 수량 조회 실패 - 종목코드 : {stock_code} (보유하지 않음)")
+            return 0
+
     def __get_stock_basic_info(self, stock_code):
         tr_cmd = {
             'rqname': "opt10001",

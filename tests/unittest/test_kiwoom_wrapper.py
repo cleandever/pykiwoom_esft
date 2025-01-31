@@ -51,9 +51,18 @@ class TestKiwoomWrapper(KiwoomTest):
             # 매수가 체결되도록 잠시 대기
             time.sleep(1)
 
+            # 매수 됐으므로 보유수량 1
+            holding_quantity = self.kiwoom_wrapper.get_stock_holding_quantity(stock_code)
+            self.assertEqual(holding_quantity, quantity)
+
             # 시장가 매도
             ret = self.kiwoom_wrapper.request_market_sell_order(stock_code, quantity)
             self.assertEqual(ret, 0)
+
+            # 매도 했으므로 보유수량 0
+            holding_quantity = self.kiwoom_wrapper.get_stock_holding_quantity(stock_code)
+            self.assertEqual(holding_quantity, 0)
+
 
     def test_real_chejan(self):
         kiwoom_chejan_service = KiwoomChejanService(self.kiwoom_wrapper, callback_chejan)

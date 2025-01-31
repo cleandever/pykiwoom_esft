@@ -44,7 +44,7 @@ class ExpectedTransactionRateTop:
             buy_quantity_percent_on_floating_stock_count = (buy_quantity / floating_stock_count) * 100 \
                 if floating_stock_count > 0 else 100
 
-            split_n = self.get_split_n(buy_amount, expected_trading_quantity)
+            split_n = self.get_split_n(stock_code, buy_amount, expected_trading_quantity)
 
             candidate_stock_info['stock_code'] = {
                 'stock_name': stock_name,
@@ -103,7 +103,7 @@ class ExpectedTransactionRateTop:
         Logger.write(f'매수 후보 - {top_1})')
         return top_1
 
-    def get_split_n(self, buy_amount, expected_trading_quantity):
+    def get_split_n(self, stock_code, buy_amount, expected_trading_quantity):
         # 강제 설정된 분할 매수 횟수
         if ConfigEsft.split_n > 0:
             return ConfigEsft.split_n
@@ -118,7 +118,7 @@ class ExpectedTransactionRateTop:
         buy_amount_billion = buy_amount / 100_000_000
         if buy_amount_billion > 100:
             # 빈번한 키움 API 호출을 피하기 위해서 최우선 매수 잔량이 100억 이상인 경우만
-            min_expected_signed_count = self.kiwoom_wrapper.get_margin_rate() * 10
+            min_expected_signed_count = self.kiwoom_wrapper.get_margin_rate(stock_code) * 10
 
         split_n = math.ceil(np.interp(expected_signed_count,
                                       [min_expected_signed_count, max_expected_signed_count],

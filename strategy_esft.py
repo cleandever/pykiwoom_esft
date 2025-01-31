@@ -79,10 +79,22 @@ def callback_orderbook(kiwoom_wrapper, stock_code, order_book_raw):
     order_book = Orderbook(stock_code, order_book_raw)
     if not order_book.is_ceiling_locked_safely():
         kiwoom_wrapper.request_market_sell_order(stock_code, total_chejan_quantity)
-        time.sleep(1)
-        # TODO: 보유한 주식 재확인 후 전량 매도
+        time.sleep(0.25)
+
+        # 종료 직전 보유 수량을 체크해서 전량 매도 (double check)
+        for _ in range(10):
+            check_holding_qty_and_sell_all(kiwoom_wrapper, stock_code)
+
         Helper.terminate_current_process()
 
+
+def check_holding_qty_and_sell_all(kiwoom_wrapper, stock_code):
+    # 보유 수량 조회
+    holding_qty = kiwoom_wrapper.get_stock_holding_quantity(stock_code)
+    if holding_qty > 0:
+        kiwoom_wrapper.request_market_sell_order(stock_code, holding_qty)
+    time.sleep(0.25)
+    return 0
 
 def callback_chejan(kiwoom_wrapper, chejan_raw):
     global total_chejan_quantity
